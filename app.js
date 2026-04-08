@@ -13,7 +13,10 @@ const {
   crearServicio,
   actualizarServicio,
   eliminarServicio,
+  getReservasByUsuarioId,
   crearReserva,
+  cancelarReservaByPaciente,
+  reprogramarReservaByPaciente,
   getReservasAdminByWeek,
   actualizarEstadoReserva,
   moverReserva,
@@ -173,6 +176,58 @@ app.post("/api/reservas", verificarToken, async (req, res) => {
 
     console.error(error);
     res.status(500).json({ error: "No se pudo guardar la reserva" });
+  }
+});
+
+app.get("/api/reservas/mias", verificarToken, async (req, res) => {
+  try {
+    const reservas = await getReservasByUsuarioId(req.usuario.id);
+    res.json({ reservas });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudieron cargar tus reservas" });
+  }
+});
+
+app.patch("/api/reservas/:id/cancelar", verificarToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const reserva = await cancelarReservaByPaciente(id, req.usuario.id);
+
+    if (!reserva) {
+      return res.status(404).json({ error: "No se encontro la reserva o no es cancelable" });
+    }
+
+    res.json(reserva);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudo cancelar la reserva" });
+  }
+});
+
+app.patch("/api/reservas/:id/reprogramar", verificarToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fecha, hora } = req.body || {};
+
+    if (!fecha || !hora) {
+      return res.status(400).json({ error: "Debes enviar fecha y hora para reprogramar" });
+    }
+
+    const reserva = await reprogramarReservaByPaciente(id, req.usuario.id, fecha, hora);
+
+    if (!reserva) {
+      return res.status(404).json({ error: "No se encontro la reserva o no es reprogramable" });
+    }
+
+    res.json(reserva);
+  } catch (error) {
+    if (error.code === "SLOT_NOT_AVAILABLE") {
+      return res.status(409).json({ error: "Ese horario ya esta ocupado o bloqueado" });
+    }
+
+    console.error(error);
+    res.status(500).json({ error: "No se pudo reprogramar la reserva" });
   }
 });
 

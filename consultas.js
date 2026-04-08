@@ -209,6 +209,19 @@ const eliminarServicio = async (id) => {
   return result.rows[0];
 };
 
+const getReservasByUsuarioId = async (usuarioId) => {
+  const result = await pool.query(
+    `
+      SELECT id, usuario_id, paciente, fecha::text AS fecha, hora, modalidad, tipo_sesion AS "tipoSesion", estado
+      FROM reservas
+      WHERE usuario_id = $1
+      ORDER BY fecha, hora
+    `,
+    [usuarioId]
+  );
+  return result.rows;
+};
+
 const asegurarSlotDisponible = async ({ fecha, hora, reservaExcluidaId = null }) => {
   const params = [fecha, hora];
   let queryReserva = `
@@ -246,6 +259,42 @@ const crearReserva = async ({ usuario_id, paciente, fecha, hora, modalidad, tipo
       RETURNING id, usuario_id, paciente, fecha::text AS fecha, hora, modalidad, tipo_sesion AS "tipoSesion", estado
     `,
     [usuario_id, paciente, fecha, hora, modalidad, tipoSesion]
+  );
+
+  return result.rows[0];
+};
+
+const cancelarReservaByPaciente = async (reservaId, usuarioId) => {
+  const result = await pool.query(
+    `
+      UPDATE reservas
+      SET estado = 'cancelada'
+      WHERE id = $1
+        AND usuario_id = $2
+        AND estado IN ('pendiente', 'confirmada')
+      RETURNING id, usuario_id, paciente, fecha::text AS fecha, hora, modalidad, tipo_sesion AS "tipoSesion", estado
+    `,
+    [reservaId, usuarioId]
+  );
+
+  return result.rows[0];
+};
+
+const reprogramarReservaByPaciente = async (reservaId, usuarioId, fecha, hora) => {
+  await asegurarSlotDisponible({ fecha, hora, reservaExcluidaId: reservaId });
+
+  const result = await pool.query(
+    `
+      UPDATE reservas
+      SET fecha = $1,
+          hora = $2,
+          estado = 'pendiente'
+      WHERE id = $3
+        AND usuario_id = $4
+        AND estado IN ('pendiente', 'confirmada')
+      RETURNING id, usuario_id, paciente, fecha::text AS fecha, hora, modalidad, tipo_sesion AS "tipoSesion", estado
+    `,
+    [fecha, hora, reservaId, usuarioId]
   );
 
   return result.rows[0];
@@ -339,7 +388,10 @@ module.exports = {
   crearServicio,
   actualizarServicio,
   eliminarServicio,
+  getReservasByUsuarioId,
   crearReserva,
+  cancelarReservaByPaciente,
+  reprogramarReservaByPaciente,
   getReservasAdminByWeek,
   actualizarEstadoReserva,
   moverReserva,
