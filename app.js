@@ -25,6 +25,11 @@ const {
   eliminarBloqueo
 } = require("./consultas");
 const { verificarToken } = require("./middlewares");
+const {
+  sendReservaPendientePacienteEmail,
+  sendReservaPendienteAdminEmail,
+  sendReservaEstadoPacienteEmail
+} = require("./mailer");
 
 const app = express();
 
@@ -153,20 +158,45 @@ app.get(["/perfil", "/api/profile"], verificarToken, (req, res) => {
 
 app.post("/api/reservas", verificarToken, async (req, res) => {
   try {
-    const { fecha, hora, modalidad, tipoSesion } = req.body || {};
+    const { nombre, apellido, email, fecha, hora, modalidad, tipoSesion } = req.body || {};
 
-    if (!fecha || !hora || !modalidad || !tipoSesion) {
+    const nombreLimpio = String(nombre || "").trim();
+    const apellidoLimpio = String(apellido || "").trim();
+    const emailLimpio = String(email || "").trim().toLowerCase();
+
+    if (!nombreLimpio || !apellidoLimpio || !emailLimpio || !fecha || !hora || !modalidad || !tipoSesion) {
       return res.status(400).json({ error: "Faltan campos obligatorios de reserva" });
     }
 
+    const nombreCompleto = `${nombreLimpio} ${apellidoLimpio}`.trim();
+
     const nuevaReserva = await crearReserva({
       usuario_id: req.usuario.id,
-      paciente: req.usuario.email,
+      paciente: emailLimpio,
       fecha,
       hora,
       modalidad,
       tipoSesion
     });
+
+    Promise.allSettled([
+      sendReservaPendientePacienteEmail({
+        to: emailLimpio,
+        nombreCompleto,
+        fecha,
+        hora,
+        modalidad,
+        tipoSesion
+      }),
+      sendReservaPendienteAdminEmail({
+        nombreCompleto,
+        emailPaciente: emailLimpio,
+        fecha,
+        hora,
+        modalidad,
+        tipoSesion
+      })
+    ]).catch(() => {});
 
     res.status(201).json(nuevaReserva);
   } catch (error) {
@@ -264,6 +294,21 @@ app.patch("/api/admin/reservas/:id/estado", verificarToken, esAdmin, async (req,
 
     if (!reserva) {
       return res.status(404).json({ error: "Reserva no encontrada" });
+    }
+
+    if (["confirmada", "rechazada", "cancelada"].includes(estado)) {
+      const emailPaciente = String(reserva.paciente || "").trim();
+
+      if (emailPaciente.includes("@")) {
+        sendReservaEstadoPacienteEmail({
+          to: emailPaciente,
+          estado,
+          fecha: reserva.fecha,
+          hora: reserva.hora,
+          modalidad: reserva.modalidad,
+          tipoSesion: reserva.tipoSesion
+        }).catch(() => {});
+      }
     }
 
     res.json(reserva);

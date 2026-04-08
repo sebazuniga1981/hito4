@@ -12,6 +12,7 @@ Backend de **PsicoConecta**, una API REST para registro/login de usuarios y gest
 - bcrypt
 - cors
 - dotenv
+- nodemailer
 - jest
 - supertest
 
@@ -53,7 +54,19 @@ DB_USER=postgres
 DB_PASSWORD=tu_password
 DB_NAME=hito3
 JWT_SECRET=tu_clave_jwt
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASS=tu_clave_smtp_o_app_password
+MAIL_FROM="PsicoConecta <tu_correo@gmail.com>"
+ADMIN_EMAIL=admin@correo.cl
 ```
+
+Notas de correo:
+- Si faltan variables SMTP, la API sigue funcionando y solo omite envio de correos.
+- Correos automaticos implementados:
+1. Al crear reserva (`pendiente`): correo a paciente + correo a admin.
+2. Al cambiar estado admin (`confirmada`/`rechazada`/`cancelada`): correo a paciente.
 
 ## Ejecucion
 
