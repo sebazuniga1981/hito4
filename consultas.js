@@ -222,6 +222,25 @@ const getReservasByUsuarioId = async (usuarioId) => {
   return result.rows;
 };
 
+const getHorariosNoDisponiblesPorFecha = async (fecha) => {
+  const result = await pool.query(
+    `
+      SELECT hora
+      FROM reservas
+      WHERE fecha = $1
+        AND estado IN ('pendiente', 'confirmada')
+      UNION
+      SELECT hora
+      FROM bloqueos
+      WHERE fecha = $1
+      ORDER BY hora
+    `,
+    [fecha]
+  );
+
+  return result.rows.map((row) => row.hora);
+};
+
 const asegurarSlotDisponible = async ({ fecha, hora, reservaExcluidaId = null }) => {
   const params = [fecha, hora];
   let queryReserva = `
@@ -389,6 +408,7 @@ module.exports = {
   actualizarServicio,
   eliminarServicio,
   getReservasByUsuarioId,
+  getHorariosNoDisponiblesPorFecha,
   crearReserva,
   cancelarReservaByPaciente,
   reprogramarReservaByPaciente,

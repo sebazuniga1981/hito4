@@ -14,6 +14,7 @@ const {
   actualizarServicio,
   eliminarServicio,
   getReservasByUsuarioId,
+  getHorariosNoDisponiblesPorFecha,
   crearReserva,
   cancelarReservaByPaciente,
   reprogramarReservaByPaciente,
@@ -216,6 +217,22 @@ app.get("/api/reservas/mias", verificarToken, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "No se pudieron cargar tus reservas" });
+  }
+});
+
+app.get("/api/reservas/disponibilidad", verificarToken, async (req, res) => {
+  try {
+    const { fecha } = req.query;
+
+    if (!fecha) {
+      return res.status(400).json({ error: "Debes enviar fecha" });
+    }
+
+    const horasNoDisponibles = await getHorariosNoDisponiblesPorFecha(fecha);
+    res.json({ fecha, horasNoDisponibles });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudo cargar disponibilidad" });
   }
 });
 
