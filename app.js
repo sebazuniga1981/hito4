@@ -26,15 +26,14 @@ app.post(["/login", "/api/login"], async (req, res) => {
 
     const rol = usuario.rol || "paciente";
 
-  const token = jwt.sign(
-  {
-    id: usuario.id,
-    email: usuario.email,
-    rol
-  },
+const token = jwt.sign(
+  { id: usuario.id, email: usuario.email, rol },
   process.env.JWT_SECRET,
   { expiresIn: "1h" }
 );
+
+res.json({ token, rol });
+
 
 
 
