@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const secretKey = require("./secretKey");
+require("dotenv").config();
 
 const verificarToken = (req, res, next) => {
   try {
@@ -15,17 +15,23 @@ const verificarToken = (req, res, next) => {
 
     if (!token) {
       return res.status(401).json({
-        error: "Formato de token inválido"
+        error: "Formato de token invalido"
       });
     }
 
-    const payload = jwt.verify(token, secretKey);
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        error: "Falta JWT_SECRET en el servidor"
+      });
+    }
+
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
     req.usuario = payload;
 
     next();
   } catch (error) {
     return res.status(401).json({
-      error: "Token inválido o expirado"
+      error: "Token invalido o expirado"
     });
   }
 };
