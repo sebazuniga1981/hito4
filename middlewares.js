@@ -26,7 +26,7 @@ const verificarToken = (req, res, next) => {
     }
 
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.usuario = payload;
+
 
     next();
   } catch (error) {
