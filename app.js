@@ -7,6 +7,8 @@ require("dotenv").config();
 const {
   getNow,
   getUsuarioByEmail,
+  getUsuarioById,
+  actualizarPerfilUsuario,
   crearUsuario,
   getServicios,
   getServicioById,
@@ -160,23 +162,77 @@ app.get(["/perfil", "/api/profile"], verificarToken, (req, res) => {
   });
 });
 
+app.get("/api/mi-perfil", verificarToken, async (req, res) => {
+  try {
+    const usuario = await getUsuarioById(req.usuario.id);
+    if (!usuario) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    res.json(usuario);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "No se pudo cargar perfil" });
+  }
+});
+
+app.patch("/api/mi-perfil", verificarToken, async (req, res) => {
+  try {
+    const { email, nombre, apellido, edad, sexo, telefono } = req.body || {};
+
+    const edadNumero = edad === "" || edad == null ? null : Number(edad);
+    if (edadNumero != null && (!Number.isInteger(edadNumero) || edadNumero < 0 || edadNumero > 120)) {
+      return res.status(400).json({ error: "Edad invalida" });
+    }
+
+    const emailLimpio = String(email || "").trim().toLowerCase();
+    if (!emailLimpio || !emailLimpio.includes("@")) {
+      return res.status(400).json({ error: "Correo invalido" });
+    }
+
+    const perfil = await actualizarPerfilUsuario(req.usuario.id, {
+      email: emailLimpio,
+      nombre: String(nombre || "").trim(),
+      apellido: String(apellido || "").trim(),
+      edad: edadNumero,
+      sexo: String(sexo || "").trim(),
+      telefono: String(telefono || "").trim()
+    });
+
+    if (!perfil) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    res.json(perfil);
+  } catch (error) {
+    if (error.code === "23505") {
+      return res.status(409).json({ error: "Ese correo ya esta en uso" });
+    }
+
+    console.error(error);
+    res.status(500).json({ error: "No se pudo actualizar perfil" });
+  }
+});
+
 app.post("/api/reservas", verificarToken, async (req, res) => {
   try {
-    const { nombre, apellido, email, fecha, hora, modalidad, tipoSesion } = req.body || {};
+    const { fecha, hora, modalidad, tipoSesion } = req.body || {};
 
-    const nombreLimpio = String(nombre || "").trim();
-    const apellidoLimpio = String(apellido || "").trim();
-    const emailLimpio = String(email || "").trim().toLowerCase();
-
-    if (!nombreLimpio || !apellidoLimpio || !emailLimpio || !fecha || !hora || !modalidad || !tipoSesion) {
+    if (!fecha || !hora || !modalidad || !tipoSesion) {
       return res.status(400).json({ error: "Faltan campos obligatorios de reserva" });
     }
 
-    const nombreCompleto = `${nombreLimpio} ${apellidoLimpio}`.trim();
+    const usuario = await getUsuarioById(req.usuario.id);
+    if (!usuario) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const emailPaciente = String(usuario.email || req.usuario.email || "").trim().toLowerCase();
+    const nombreCompleto = `${usuario.nombre || ""} ${usuario.apellido || ""}`.trim() || emailPaciente;
 
     const nuevaReserva = await crearReserva({
       usuario_id: req.usuario.id,
-      paciente: emailLimpio,
+      paciente: emailPaciente,
       fecha,
       hora,
       modalidad,
@@ -185,7 +241,7 @@ app.post("/api/reservas", verificarToken, async (req, res) => {
 
     Promise.allSettled([
       sendReservaPendientePacienteEmail({
-        to: emailLimpio,
+        to: emailPaciente,
         nombreCompleto,
         fecha,
         hora,
@@ -194,7 +250,7 @@ app.post("/api/reservas", verificarToken, async (req, res) => {
       }),
       sendReservaPendienteAdminEmail({
         nombreCompleto,
-        emailPaciente: emailLimpio,
+        emailPaciente,
         fecha,
         hora,
         modalidad,

@@ -28,6 +28,11 @@ const initializeDatabase = async () => {
   `);
 
   await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR(20) NOT NULL DEFAULT 'paciente'");
+  await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre VARCHAR(120)");
+  await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS apellido VARCHAR(120)");
+  await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS edad INTEGER");
+  await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS sexo VARCHAR(30)");
+  await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono VARCHAR(40)");
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS categorias (
@@ -127,7 +132,10 @@ const initializeDatabase = async () => {
 };
 
 const getUsuarioByEmail = async (email) => {
-  const result = await pool.query("SELECT id, email, password, rol FROM usuarios WHERE email = $1", [email]);
+  const result = await pool.query(
+    "SELECT id, email, password, rol, nombre, apellido, edad, sexo, telefono FROM usuarios WHERE email = $1",
+    [email]
+  );
   return result.rows[0];
 };
 
@@ -136,6 +144,37 @@ const crearUsuario = async (email, password) => {
     "INSERT INTO usuarios (email, password, rol) VALUES ($1, $2, 'paciente') RETURNING id, email, rol",
     [email, password]
   );
+  return result.rows[0];
+};
+
+const getUsuarioById = async (id) => {
+  const result = await pool.query(
+    `
+      SELECT id, email, rol, nombre, apellido, edad, sexo, telefono
+      FROM usuarios
+      WHERE id = $1
+    `,
+    [id]
+  );
+  return result.rows[0];
+};
+
+const actualizarPerfilUsuario = async (id, { email, nombre, apellido, edad, sexo, telefono }) => {
+  const result = await pool.query(
+    `
+      UPDATE usuarios
+      SET email = $1,
+          nombre = $2,
+          apellido = $3,
+          edad = $4,
+          sexo = $5,
+          telefono = $6
+      WHERE id = $7
+      RETURNING id, email, rol, nombre, apellido, edad, sexo, telefono
+    `,
+    [email || null, nombre || null, apellido || null, edad || null, sexo || null, telefono || null, id]
+  );
+
   return result.rows[0];
 };
 
@@ -401,6 +440,8 @@ module.exports = {
   getNow,
   initializeDatabase,
   getUsuarioByEmail,
+  getUsuarioById,
+  actualizarPerfilUsuario,
   crearUsuario,
   getServicios,
   getServicioById,
