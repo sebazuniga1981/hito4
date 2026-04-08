@@ -54,6 +54,7 @@ DB_USER=postgres
 DB_PASSWORD=tu_password
 DB_NAME=hito3
 JWT_SECRET=tu_clave_jwt
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxx
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=tu_correo@gmail.com
@@ -63,6 +64,7 @@ ADMIN_EMAIL=admin@correo.cl
 ```
 
 Notas de correo:
+- Recomendado: usar `RESEND_API_KEY` (envio por HTTPS, mas estable en Render).
 - Si faltan variables SMTP, la API sigue funcionando y solo omite envio de correos.
 - Correos automaticos implementados:
 1. Al crear reserva (`pendiente`): correo a paciente + correo a admin.

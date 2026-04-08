@@ -1,5 +1,7 @@
 const nodemailer = require("nodemailer");
 
+const hasResendConfig = () => Boolean(process.env.RESEND_API_KEY);
+
 const hasMailConfig = () => {
   return Boolean(
     process.env.SMTP_HOST &&
@@ -33,6 +35,35 @@ const getTransporter = () => {
 };
 
 const sendMailSafe = async ({ to, subject, text }) => {
+  if (hasResendConfig()) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: process.env.MAIL_FROM || "onboarding@resend.dev",
+          to: [to],
+          subject,
+          text
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.text();
+        console.error("Error enviando correo (Resend):", data);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error enviando correo (Resend):", error.message);
+      return false;
+    }
+  }
+
   const tx = getTransporter();
   if (!tx || !to) return false;
 
@@ -125,8 +156,67 @@ const sendReservaEstadoPacienteEmail = async ({ to, estado, fecha, hora, modalid
   return sendMailSafe({ to, subject, text });
 };
 
+const sendReservaCanceladaPacienteEmail = async ({ to, fecha, hora, modalidad, tipoSesion }) => {
+  const subject = "PsicoConecta: cancelacion de reserva";
+  const text = [
+    "Tu reserva fue cancelada correctamente.",
+    "",
+    `Fecha: ${fecha}`,
+    `Hora: ${hora}`,
+    `Modalidad: ${modalidad}`,
+    `Tipo de sesion: ${tipoSesion}`,
+    "",
+    "Si deseas, puedes agendar una nueva hora desde tu panel.",
+    "",
+    "Equipo PsicoConecta"
+  ].join("\n");
+
+  return sendMailSafe({ to, subject, text });
+};
+
+const sendReservaCanceladaAdminEmail = async ({ emailPaciente, fecha, hora, modalidad, tipoSesion }) => {
+  const to = process.env.ADMIN_EMAIL;
+  if (!to) return false;
+
+  const subject = "PsicoConecta: paciente cancelo su reserva";
+  const text = [
+    "Un paciente cancelo su reserva.",
+    "",
+    `Correo paciente: ${emailPaciente || "Sin correo"}`,
+    `Fecha: ${fecha}`,
+    `Hora: ${hora}`,
+    `Modalidad: ${modalidad}`,
+    `Tipo de sesion: ${tipoSesion}`,
+    "",
+    "Puedes revisar el calendario para liberar o ajustar ese horario."
+  ].join("\n");
+
+  return sendMailSafe({ to, subject, text });
+};
+
+const sendReservaReprogramadaPacienteEmail = async ({ to, fecha, hora, modalidad, tipoSesion }) => {
+  const subject = "PsicoConecta: tu reserva fue reprogramada";
+  const text = [
+    "Tu reserva fue reprogramada por administracion.",
+    "",
+    `Nueva fecha: ${fecha}`,
+    `Nueva hora: ${hora}`,
+    `Modalidad: ${modalidad}`,
+    `Tipo de sesion: ${tipoSesion}`,
+    "",
+    "Si tienes dudas, responde a este correo.",
+    "",
+    "Equipo PsicoConecta"
+  ].join("\n");
+
+  return sendMailSafe({ to, subject, text });
+};
+
 module.exports = {
   sendReservaPendientePacienteEmail,
   sendReservaPendienteAdminEmail,
-  sendReservaEstadoPacienteEmail
+  sendReservaEstadoPacienteEmail,
+  sendReservaCanceladaPacienteEmail,
+  sendReservaCanceladaAdminEmail,
+  sendReservaReprogramadaPacienteEmail
 };

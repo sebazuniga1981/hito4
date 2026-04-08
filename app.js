@@ -29,7 +29,10 @@ const { verificarToken } = require("./middlewares");
 const {
   sendReservaPendientePacienteEmail,
   sendReservaPendienteAdminEmail,
-  sendReservaEstadoPacienteEmail
+  sendReservaEstadoPacienteEmail,
+  sendReservaCanceladaPacienteEmail,
+  sendReservaCanceladaAdminEmail,
+  sendReservaReprogramadaPacienteEmail
 } = require("./mailer");
 
 const app = express();
@@ -245,6 +248,27 @@ app.patch("/api/reservas/:id/cancelar", verificarToken, async (req, res) => {
       return res.status(404).json({ error: "No se encontro la reserva o no es cancelable" });
     }
 
+    const emailPaciente = String(reserva.paciente || "").trim();
+
+    Promise.allSettled([
+      emailPaciente.includes("@")
+        ? sendReservaCanceladaPacienteEmail({
+            to: emailPaciente,
+            fecha: reserva.fecha,
+            hora: reserva.hora,
+            modalidad: reserva.modalidad,
+            tipoSesion: reserva.tipoSesion
+          })
+        : Promise.resolve(false),
+      sendReservaCanceladaAdminEmail({
+        emailPaciente,
+        fecha: reserva.fecha,
+        hora: reserva.hora,
+        modalidad: reserva.modalidad,
+        tipoSesion: reserva.tipoSesion
+      })
+    ]).catch(() => {});
+
     res.json(reserva);
   } catch (error) {
     console.error(error);
@@ -348,6 +372,17 @@ app.patch("/api/admin/reservas/:id/mover", verificarToken, esAdmin, async (req, 
 
     if (!reserva) {
       return res.status(404).json({ error: "Reserva no encontrada" });
+    }
+
+    const emailPaciente = String(reserva.paciente || "").trim();
+    if (emailPaciente.includes("@")) {
+      sendReservaReprogramadaPacienteEmail({
+        to: emailPaciente,
+        fecha: reserva.fecha,
+        hora: reserva.hora,
+        modalidad: reserva.modalidad,
+        tipoSesion: reserva.tipoSesion
+      }).catch(() => {});
     }
 
     res.json(reserva);
