@@ -15,7 +15,8 @@ Backend de **PsicoConecta**, una API REST para registro/login de usuarios y gest
 - nodemailer
 - jest
 - supertest
-- prueba de acceso admin
+- prueba de acceso admin1
+
 
 ## Funcionalidades
 
