@@ -1,4 +1,4 @@
-const { Pool } = require("pg");
+﻿const { Pool } = require("pg");
 const bcrypt = require("bcrypt");
 require("dotenv").config();
 
@@ -114,8 +114,11 @@ const initializeDatabase = async () => {
       INSERT INTO usuarios (email, password, rol)
       VALUES ($1, $2, 'admin')
       ON CONFLICT (email) DO UPDATE
-      SET rol = 'admin'
+      SET password = EXCLUDED.password,
     `,
+// SET password = EXCLUDED.password, mal
+//  SET rol = 'admin' bien
+
     [adminEmail, adminPasswordHash]
   );
 
