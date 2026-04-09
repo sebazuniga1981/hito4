@@ -114,8 +114,7 @@ const initializeDatabase = async () => {
       INSERT INTO usuarios (email, password, rol)
       VALUES ($1, $2, 'admin')
       ON CONFLICT (email) DO UPDATE
-      SET password = EXCLUDED.password,
-          rol = 'admin'
+      SET rol = 'admin'
     `,
     [adminEmail, adminPasswordHash]
   );
