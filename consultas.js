@@ -2,14 +2,22 @@
 const bcrypt = require("bcrypt");
 require("dotenv").config();
 
+const usingDatabaseUrl = Boolean(process.env.DATABASE_URL);
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  ...(usingDatabaseUrl
+    ? { connectionString: process.env.DATABASE_URL }
+    : {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME
+      }),
   allowExitOnIdle: true,
-  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined
+  ssl:
+    process.env.DB_SSL === "true" || usingDatabaseUrl
+      ? { rejectUnauthorized: false }
+      : undefined
 });
 
 const getNow = async () => {
@@ -115,10 +123,8 @@ const initializeDatabase = async () => {
       VALUES ($1, $2, 'admin')
       ON CONFLICT (email) DO UPDATE
       SET password = EXCLUDED.password,
+          rol = 'admin'
     `,
-// SET password = EXCLUDED.password, mal
-//  SET rol = 'admin' bien
-
     [adminEmail, adminPasswordHash]
   );
 

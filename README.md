@@ -50,6 +50,9 @@ Crea un archivo `.env` con este formato:
 
 ```env
 PORT=3000
+# Produccion (Render): usar DATABASE_URL y DB_SSL=true
+# DATABASE_URL=postgres://usuario:password@host:5432/dbname
+# DB_SSL=true
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
